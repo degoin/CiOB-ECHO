@@ -23,3 +23,13 @@ df$mat_race_eth <- ifelse(df$mat_eth==1, 1,
 
 df$mat_race_eth <- factor(df$mat_race_eth, levels=c(1,2,3,4,5), 
                           labels=c("Latina","Asian/PI", "Black","White","Other or multiple"))
+
+
+df$marital <- ifelse(df$marital_stat>=97,NA, df$marital_stat)
+
+df$marital <- ifelse(df$marital==4, 3, df$marital)
+df$marital <- factor(df$marital, levels=c(1,3,5), labels=c("Married","Widowed, separated, or divorced","Never married"))
+
+df$medi_cal <- ifelse(df$medi_cal_m>=97,NA, df$medi_cal_m)
+
+
