@@ -5,9 +5,15 @@ df <- read.csv("/Users/danagoin/Documents/CiOB-ECHO/CiOB2/questionnaire.csv")
 # read in medical record abstraction data 
 
 df_mr <- read.csv("/Users/danagoin/Documents/CiOB-ECHO/CiOB2/medicalrecordabstraction.csv")
+
+# recode variables you need 
 df_mr$mat_age <- ifelse(df_mr$age_dlvry_mr==9999, NA, df_mr$age_dlvry_mr)
+
+# note: hx means history, fhx means family history 
+df_mr$preeclampsia <- ifelse(df_mr$preclmps_hx_ns_mr==9,NA,df_mr$preclmps_hx_ns_mr)
+df_mr$hypertension <- ifelse(df_mr$htn_hx_mr==9, NA, df_mr$htn_hx_mr)
 # only keep age for now
-df_mr <- df_mr %>% select(ppt_id, mat_age)
+df_mr <- df_mr %>% select(ppt_id, mat_age, preeclampsia, hypertension)
 
 # fetal growth created variables 
 
@@ -165,6 +171,8 @@ df_m$sga <- ifelse(df_m$SGA_10=="1: Small for GA",1,0)
 
 summary(glm(ptb ~ CRH_pg_ml, data=df_m))
 summary(glm(sga ~ CRH_pg_ml + hh_income_cat + mat_edu + marital + mat_age + mat_race_eth, data=df_m))
+summary(glm(preeclampsia ~ CRH_pg_ml, data=df_m))
+summary(glm(hypertension ~ CRH_pg_ml + hh_income_cat + mat_edu + marital + mat_age + mat_race_eth, data=df_m))
 
 
 df_m$mat_age_sq <- df_m$mat_age^2
