@@ -1,3 +1,5 @@
+rm(list=ls())
+
 library(dplyr)
 library(readxl)
 library(ggplot2)
@@ -115,7 +117,7 @@ df_crh <- data.frame(rbind(df_crh1, df_crh2))
 
 # the consonant at the beginning of some of the ppt id numbers corresponds to the language the interview was conducted in - E for English and S for Spanish
 
-df_crh$ppt_id <- as.numeric(gsub("[^0-9]", "", df_crh$`PT ID`))
+df_crh$ppt_id <- as.numeric(gsub("[^0-9]", "", df_crh$ppt_id))
 
 df_m <- full_join(df_crh, df)
 dim(df_m)
@@ -126,56 +128,78 @@ dim(df_m)
 sum(!unique(df_crh$ppt_id) %in% unique(df$ppt_id))
 df_crh[!unique(df_crh$ppt_id) %in% unique(df$ppt_id),]
 
-# 81 in survey data that don't have CRH measurements 
+
+# 15 in survey data that don't have CRH measurements 
 sum(!unique(df$ppt_id) %in% unique(df_crh$ppt_id))
 df$ppt_id[!unique(df$ppt_id) %in% unique(df_crh$ppt_id)]
-# look into why these people don't have CRH measurements -- this is probably because CRH is not measured in ECHO participants, only in CiOB participants 
+# Erin is looking into why these 15 people don't have CRH measurements 
+
+# in the meantime, just use those that have CRH values 
+
+df_m <- left_join(df_crh, df)
+dim(df_m)
 
 # log-CRH is approximately normally distributed
-qqnorm(log(df_crh$`pg/ml`))
-qqline(log(df_crh$`pg/ml`))
+qqnorm(log(df_crh$CRH_pg_ml))
+qqline(log(df_crh$CRH_pg_ml))
 
 # merge on medical record data 
 df_m <- left_join(df_m, df_mr)
 df_m <- left_join(df_m, df_f)
-df_m$CRH_pg_ml <- df_m$`pg/ml`
 
 # look at distribtuion of CRH by potential confounders 
 
 # race
-ggplot(df_m, aes(x=mat_race_eth, y=CRH_pg_ml)) + 
+p1<- ggplot(df_m, aes(x=mat_race_eth, y=CRH_pg_ml)) + 
   theme_bw()  + geom_boxplot() + labs(x="",y="Mean concentration (ppm)") + 
   scale_x_discrete(labels=c("Latina","Black/African American","White","Asian/Pacific Islander","Other or multiple","Missing"))
+
+ggsave(p1, file="/Users/danagoin/Documents/Research projects/CiOB-ECHO/Fetal growth and pregnancy complications/results/CRH_by_race.pdf")
 
 # use kruskal-wallis test, a non-parametric method for testing whether samples originate from the same distribution 
 kruskal.test(df_m$CRH_pg_ml~df_m$mat_race_eth)
 
 
 # educ
-ggplot(df_m, aes(x=mat_edu, y=CRH_pg_ml)) + 
+p2 <- ggplot(df_m, aes(x=mat_edu, y=CRH_pg_ml)) + 
   theme_bw()  + geom_boxplot() + labs(x="",y="Mean concentration (ppm)") + 
   scale_x_discrete(labels=c("Less than high school","High school grad", "Some college", "College grad", "Master's degree","Doctoral degree","Missing"))
+
+ggsave(p2, file="/Users/danagoin/Documents/Research projects/CiOB-ECHO/Fetal growth and pregnancy complications/results/CRH_by_educ.pdf")
+
+
 
 # use kruskal-wallis test, a non-parametric method for testing whether samples originate from the same distribution 
 kruskal.test(df_m$CRH_pg_ml~df_m$mat_edu)
 
 
 # marital status
-ggplot(df_m, aes(x=marital, y=CRH_pg_ml)) + 
+p3 <- ggplot(df_m, aes(x=marital, y=CRH_pg_ml)) + 
   theme_bw()  + geom_boxplot() + labs(x="",y="Mean concentration (ppm)") + 
   scale_x_discrete(labels=c("Married","Widowed, separated, or divorced","Never married","Missing"))
+
+ggsave(p3, file="/Users/danagoin/Documents/Research projects/CiOB-ECHO/Fetal growth and pregnancy complications/results/CRH_by_marital.pdf")
 
 # use kruskal-wallis test, a non-parametric method for testing whether samples originate from the same distribution 
 kruskal.test(df_m$CRH_pg_ml~df_m$marital)
 
 # household income
-ggplot(df_m, aes(x=hh_income_cat, y=CRH_pg_ml)) + 
+p4 <- ggplot(df_m, aes(x=hh_income_cat, y=CRH_pg_ml)) + 
   theme_bw()  + geom_boxplot() + labs(x="",y="Mean concentration (ppm)") + 
   scale_x_discrete(labels=c("<40,000","$40,000-$79,999","$80,000+","Missing"))
+
+ggsave(p4, file="/Users/danagoin/Documents/Research projects/CiOB-ECHO/Fetal growth and pregnancy complications/results/CRH_by_income.pdf")
 
 # use kruskal-wallis test, a non-parametric method for testing whether samples originate from the same distribution 
 kruskal.test(df_m$CRH_pg_ml~df_m$hh_income_cat)
 
+
+# age
+p5 <- ggplot(data=df_m, aes(x=mat_age, y=CRH_pg_ml)) + geom_point() + 
+  geom_smooth(method="lm", se=F, linetype=2, color="black") + theme_bw() + 
+  labs(x="Maternal age", y="CRH") + theme(axis.text=element_text(size=15), axis.title=element_text(size=15, face="bold"))
+
+ggsave(p5, file="/Users/danagoin/Documents/Research projects/CiOB-ECHO/Fetal growth and pregnancy complications/results/CRH_by_age.pdf")
 
 
 # look at SGA and PTB in relation to CRH levels 
@@ -183,9 +207,9 @@ df_m$ptb <- ifelse(df_m$ga_cat.4=="Preterm",1,0)
 df_m$sga <- ifelse(df_m$SGA_10=="1: Small for GA",1,0)
 
 summary(glm(ptb ~ CRH_pg_ml, data=df_m))
-summary(glm(sga ~ CRH_pg_ml + hh_income_cat + mat_edu + marital + mat_age + mat_race_eth, data=df_m))
+summary(glm(sga ~ CRH_pg_ml, data=df_m))
 summary(glm(preeclampsia ~ CRH_pg_ml, data=df_m))
-summary(glm(hypertension ~ CRH_pg_ml + hh_income_cat + mat_edu + marital + mat_age + mat_race_eth, data=df_m))
+summary(glm(hypertension ~ CRH_pg_ml, data=df_m))
 
 
 df_m$mat_age_sq <- df_m$mat_age^2
@@ -193,9 +217,4 @@ summary(glm(ptb ~ mat_age + mat_age_sq, data=df_m))
 summary(glm(sga ~ mat_age, data=df_m))
 
 
-
-# read in telomere data 
-
-df_crh <- read_xlsx("/Users/danagoin/Documents/CiOB-ECHO/Stress Biomarkers/CRH results/Fisher Lab/CORRECTEDCiOB2CRHCompiledData8.2.18.xlsx", sheet="ALL VALUES", range="B4:C435")
-
-
+#descriptive statistics 
