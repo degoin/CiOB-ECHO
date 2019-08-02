@@ -149,9 +149,17 @@ df_m <- left_join(df_m, df_f)
 
 # look at distribtuion of CRH by potential confounders 
 
+
+
+# distribution of CRH
+p0 <- ggplot(df_m) + theme_bw()  + geom_histogram(aes(log(CRH_pg_ml)), fill="#2b8cbe", color="black") + labs(x="log CRH") 
+
+ggsave(p0, file="/Users/danagoin/Documents/Research projects/CiOB-ECHO/Fetal growth and pregnancy complications/results/log_CRH_hist.pdf")
+
+
 # race
-p1<- ggplot(df_m, aes(x=mat_race_eth, y=CRH_pg_ml)) + 
-  theme_bw()  + geom_boxplot() + labs(x="",y="Mean concentration (ppm)") + 
+p1<- ggplot(df_m, aes(x=mat_race_eth, y=log(CRH_pg_ml))) + 
+  theme_bw()  + geom_boxplot() + labs(x="",y="log CRH") + 
   scale_x_discrete(labels=c("Latina","Black/African American","White","Asian/Pacific Islander","Other or multiple","Missing"))
 
 ggsave(p1, file="/Users/danagoin/Documents/Research projects/CiOB-ECHO/Fetal growth and pregnancy complications/results/CRH_by_race.pdf")
@@ -161,9 +169,9 @@ kruskal.test(df_m$CRH_pg_ml~df_m$mat_race_eth)
 
 
 # educ
-p2 <- ggplot(df_m, aes(x=mat_edu, y=CRH_pg_ml)) + 
-  theme_bw()  + geom_boxplot() + labs(x="",y="Mean concentration (ppm)") + 
-  scale_x_discrete(labels=c("Less than high school","High school grad", "Some college", "College grad", "Master's degree","Doctoral degree","Missing"))
+p2 <- ggplot(df_m, aes(x=mat_edu, y=log(CRH_pg_ml))) + 
+  theme_bw()  + geom_boxplot() + labs(x="",y="log CRH") + 
+  scale_x_discrete(labels=c("Less than \nhigh school","High school grad", "Some college", "College grad", "Master's degree","Doctoral degree","Missing"))
 
 ggsave(p2, file="/Users/danagoin/Documents/Research projects/CiOB-ECHO/Fetal growth and pregnancy complications/results/CRH_by_educ.pdf")
 
@@ -174,8 +182,8 @@ kruskal.test(df_m$CRH_pg_ml~df_m$mat_edu)
 
 
 # marital status
-p3 <- ggplot(df_m, aes(x=marital, y=CRH_pg_ml)) + 
-  theme_bw()  + geom_boxplot() + labs(x="",y="Mean concentration (ppm)") + 
+p3 <- ggplot(df_m, aes(x=marital, y=log(CRH_pg_ml))) + 
+  theme_bw()  + geom_boxplot() + labs(x="",y="log CRH") + 
   scale_x_discrete(labels=c("Married","Widowed, separated, or divorced","Never married","Missing"))
 
 ggsave(p3, file="/Users/danagoin/Documents/Research projects/CiOB-ECHO/Fetal growth and pregnancy complications/results/CRH_by_marital.pdf")
@@ -184,8 +192,8 @@ ggsave(p3, file="/Users/danagoin/Documents/Research projects/CiOB-ECHO/Fetal gro
 kruskal.test(df_m$CRH_pg_ml~df_m$marital)
 
 # household income
-p4 <- ggplot(df_m, aes(x=hh_income_cat, y=CRH_pg_ml)) + 
-  theme_bw()  + geom_boxplot() + labs(x="",y="Mean concentration (ppm)") + 
+p4 <- ggplot(df_m, aes(x=hh_income_cat, y=log(CRH_pg_ml))) + 
+  theme_bw()  + geom_boxplot() + labs(x="",y="log CRH") + 
   scale_x_discrete(labels=c("<40,000","$40,000-$79,999","$80,000+","Missing"))
 
 ggsave(p4, file="/Users/danagoin/Documents/Research projects/CiOB-ECHO/Fetal growth and pregnancy complications/results/CRH_by_income.pdf")
@@ -195,26 +203,36 @@ kruskal.test(df_m$CRH_pg_ml~df_m$hh_income_cat)
 
 
 # age
-p5 <- ggplot(data=df_m, aes(x=mat_age, y=CRH_pg_ml)) + geom_point() + 
+p5 <- ggplot(data=df_m, aes(x=mat_age, y=log(CRH_pg_ml))) + geom_point() + 
   geom_smooth(method="lm", se=F, linetype=2, color="black") + theme_bw() + 
-  labs(x="Maternal age", y="CRH") + theme(axis.text=element_text(size=15), axis.title=element_text(size=15, face="bold"))
+  labs(x="Maternal age", y="log CRH") + theme(axis.text=element_text(size=15), axis.title=element_text(size=15, face="bold"))
 
 ggsave(p5, file="/Users/danagoin/Documents/Research projects/CiOB-ECHO/Fetal growth and pregnancy complications/results/CRH_by_age.pdf")
+
+
+# birth weight
+p6 <- ggplot(data=df_m, aes(x=log(CRH_pg_ml), y=baby_wt_grams)) + geom_point() + 
+  geom_smooth(method="lm", se=F, linetype=2, color="black") + theme_bw() + 
+  labs(x="log CRH", y="Birth weight") + theme(axis.text=element_text(size=15), axis.title=element_text(size=15, face="bold"))
+
+ggsave(p6, file="/Users/danagoin/Documents/Research projects/CiOB-ECHO/Fetal growth and pregnancy complications/results/CRH_by_bw.pdf")
 
 
 # look at SGA and PTB in relation to CRH levels 
 df_m$ptb <- ifelse(df_m$ga_cat.4=="Preterm",1,0)
 df_m$sga <- ifelse(df_m$SGA_10=="1: Small for GA",1,0)
 
-summary(glm(ptb ~ CRH_pg_ml, data=df_m))
-summary(glm(sga ~ CRH_pg_ml, data=df_m))
-summary(glm(preeclampsia ~ CRH_pg_ml, data=df_m))
-summary(glm(hypertension ~ CRH_pg_ml, data=df_m))
+# t-tests 
+t.test(log(df_m$CRH_pg_ml) ~ df_m$ptb)
+t.test(log(df_m$CRH_pg_ml) ~ df_m$sga)
+t.test(log(df_m$CRH_pg_ml) ~ df_m$preeclampsia)
+t.test(log(df_m$CRH_pg_ml) ~ df_m$hypertension)
 
 
-df_m$mat_age_sq <- df_m$mat_age^2
-summary(glm(ptb ~ mat_age + mat_age_sq, data=df_m))
-summary(glm(sga ~ mat_age, data=df_m))
+summary(glm(ptb ~ log(CRH_pg_ml), data=df_m))
+summary(glm(sga ~ log(CRH_pg_ml), data=df_m))
+summary(glm(baby_wt_grams ~ log(CRH_pg_ml), data=df_m))
 
+summary(glm(preeclampsia ~ log(CRH_pg_ml), data=df_m))
+summary(glm(hypertension ~ log(CRH_pg_ml), data=df_m))
 
-#descriptive statistics 
