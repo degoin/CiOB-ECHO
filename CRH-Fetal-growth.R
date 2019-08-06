@@ -19,8 +19,9 @@ df_mr$mat_age <- ifelse(df_mr$age_dlvry_mr==9999, NA, df_mr$age_dlvry_mr)
 # note: hx means history, fhx means family history 
 df_mr$preeclampsia <- ifelse(df_mr$preclmps_hx_ns_mr==9,NA,df_mr$preclmps_hx_ns_mr)
 df_mr$hypertension <- ifelse(df_mr$htn_hx_mr==9, NA, df_mr$htn_hx_mr)
+df_mr$pp_bmi <- ifelse(df_mr$bmi_preprg_mr==9999,NA,df_mr$bmi_preprg_mr)
 # only keep age for now
-df_mr <- df_mr %>% select(ppt_id, mat_age, preeclampsia, hypertension)
+df_mr <- df_mr %>% select(ppt_id, mat_age, preeclampsia, hypertension, pp_bmi)
 
 # fetal growth created variables 
 # this data set came from Stephanie, to be consistent with how fetal growth measures have previously been defined 
@@ -56,6 +57,7 @@ df$marital <- ifelse(df$marital==4, 3, df$marital)
 df$marital <- factor(df$marital, levels=c(1,3,5), labels=c("Married","Widowed, separated, or divorced","Never married"))
 
 df$medi_cal <- ifelse(df$medi_cal_m>=97,NA, df$medi_cal_m)
+
 
 
 # create income categories 
@@ -223,6 +225,23 @@ ggsave(p6, file="/Users/danagoin/Documents/Research projects/CiOB-ECHO/Fetal gro
 
 summary(glm(baby_wt_grams ~ log_CRH, data=df_m))
 
+# term birth weight 
+p7 <- ggplot(data=df_m[df_m$ga_cat.4=="Full Term",], aes(x=log_CRH, y=baby_wt_grams)) + geom_point() + 
+  geom_smooth(method="lm", se=F, linetype=2, color="black") + theme_bw() + 
+  labs(x="log CRH", y="Term birth weight") + theme(axis.text=element_text(size=15), axis.title=element_text(size=15, face="bold"))
+
+ggsave(p7, file="/Users/danagoin/Documents/Research projects/CiOB-ECHO/Fetal growth and pregnancy complications/results/CRH_by_bw_term.pdf")
+
+
+# pre-pregnancy BMI
+p8 <- ggplot(data=df_m, aes(x=pp_bmi, y=log_CRH)) + geom_point() + 
+  geom_smooth(method="lm", se=F, linetype=2, color="black") + theme_bw() + 
+  labs(x="pre-pregnancy BMI", y="log CRH") + theme(axis.text=element_text(size=15), axis.title=element_text(size=15, face="bold"))
+
+ggsave(p8, file="/Users/danagoin/Documents/Research projects/CiOB-ECHO/Fetal growth and pregnancy complications/results/CRH_by_bmi.pdf")
+
+
+
 
 # look at SGA and PTB in relation to CRH levels 
 df_m$ptb <- ifelse(df_m$ga_cat.4=="Preterm",1,0)
@@ -235,10 +254,45 @@ t.test(log(df_m$CRH_pg_ml) ~ df_m$preeclampsia)
 t.test(log(df_m$CRH_pg_ml) ~ df_m$hypertension)
 
 
-summary(glm(ptb ~ log(CRH_pg_ml), data=df_m))
-summary(glm(sga ~ log(CRH_pg_ml), data=df_m))
-summary(glm(baby_wt_grams ~ log(CRH_pg_ml), data=df_m))
+summary(glm(sga ~ log_CRH + factor(mat_race_eth) + mat_age + factor(mat_edu) + factor(hh_income_cat) + factor(marital) + pp_bmi + medi_cal, data=df_m))
+summary(glm(ptb ~ log_CRH + factor(mat_race_eth) + mat_age + factor(mat_edu) + factor(hh_income_cat) + factor(marital) + pp_bmi + medi_cal, data=df_m))
+summary(glm(baby_wt_grams ~ log_CRH + factor(mat_race_eth) + mat_age + factor(mat_edu) + factor(hh_income_cat) + factor(marital) + pp_bmi + medi_cal, data=df_m))
+summary(glm(baby_wt_grams ~ log_CRH + factor(mat_race_eth) + mat_age + factor(mat_edu) + factor(hh_income_cat) + factor(marital) + pp_bmi + medi_cal, data=df_m %>% filter(ga_cat.4=="Full Term")))
+summary(glm(ga_weeks_comb ~ log_CRH + factor(mat_race_eth) + mat_age + factor(mat_edu) + factor(hh_income_cat) + factor(marital) + pp_bmi + medi_cal, data=df_m))
+summary(glm(preeclampsia ~ log_CRH + factor(mat_race_eth) + mat_age + factor(mat_edu) + factor(hh_income_cat) + factor(marital) + pp_bmi + medi_cal, data=df_m))
+summary(glm(hypertension ~ log_CRH + factor(mat_race_eth) + mat_age + factor(mat_edu) + factor(hh_income_cat) + factor(marital) + pp_bmi + medi_cal, data=df_m))
 
-summary(glm(preeclampsia ~ log(CRH_pg_ml), data=df_m))
-summary(glm(hypertension ~ log(CRH_pg_ml), data=df_m))
+# 19 missing birth weight 
+# 11 missing race 
+# 17 missing maternal age 
+# 10 missing maternal education
+# 44 missing household income 
+# 14 missing marital status 
 
+
+#to know how many were used in model -- nrow(model.frame(mh))
+
+
+# preeclampsia
+p10 <- ggplot(df_m, aes(x=factor(preeclampsia), y=log_CRH)) + 
+  theme_bw()  + geom_boxplot() + labs(x="",y="log CRH") + 
+  scale_x_discrete(labels=c("No preeclampsia","Preeclampsia","Missing"))
+
+ggsave(p10, file="/Users/danagoin/Documents/Research projects/CiOB-ECHO/Fetal growth and pregnancy complications/results/CRH_by_preeclampsia.pdf")
+
+# hypertension
+p11 <- ggplot(df_m, aes(x=factor(hypertension), y=log_CRH)) + 
+  theme_bw()  + geom_boxplot() + labs(x="",y="log CRH") + 
+  scale_x_discrete(labels=c("No hypertension","Hypertension","Missing"))
+
+ggsave(p11, file="/Users/danagoin/Documents/Research projects/CiOB-ECHO/Fetal growth and pregnancy complications/results/CRH_by_hypertension.pdf")
+
+
+# gestational age in weeks 
+ggplot(data=df_m, aes(x=log_CRH, y=ga_weeks_comb)) + geom_point() + 
+  geom_smooth(method="loess", linetype=2, color="black") + theme_bw() + 
+  labs(x="log CRH", y="Gestational age (weeks)") + theme(axis.text=element_text(size=15), axis.title=element_text(size=15, face="bold"))
+
+library(xtable)
+table <- read_xlsx("/Users/danagoin/Documents/Research projects/CiOB-ECHO/Fetal growth and pregnancy complications/results/preliminary results 8-6-2019.xlsx", range="A3:D10")
+xtable(table)
