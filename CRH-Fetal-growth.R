@@ -7,11 +7,18 @@ library(ggplot2)
 
 # read in CiOB survey data
 
-df <- read.csv("/Users/danagoin/Documents/Research projects/CiOB-ECHO/CiOB2 data/questionnaire.csv")
+df <- read.csv("/Users/danagoin/Documents/Research projects/CiOB-ECHO/Data/CiOB2 data/questionnaire.csv")
+
+# read in biospecimen collection data 
+
+df_b <- read.csv("/Users/danagoin/Documents/Research projects/CiOB-ECHO/Data/CiOB2 data/biospecimen.csv")
+df_b <- df_b %>% select(ppt_id, secondtri_date)
+
 
 # read in medical record abstraction data 
 
-df_mr <- read.csv("/Users/danagoin/Documents/Research projects/CiOB-ECHO/CiOB2 data/medicalrecordabstraction.csv")
+df_mr <- read.csv("/Users/danagoin/Documents/Research projects/CiOB-ECHO/Data/CiOB2 data/medicalrecordabstraction.csv")
+
 
 # recode variables you need 
 df_mr$mat_age <- ifelse(df_mr$age_dlvry_mr==9999, NA, df_mr$age_dlvry_mr)
@@ -20,15 +27,71 @@ df_mr$mat_age <- ifelse(df_mr$age_dlvry_mr==9999, NA, df_mr$age_dlvry_mr)
 df_mr$preeclampsia <- ifelse(df_mr$preclmps_hx_ns_mr==9,NA,df_mr$preclmps_hx_ns_mr)
 df_mr$hypertension <- ifelse(df_mr$htn_hx_mr==9, NA, df_mr$htn_hx_mr)
 df_mr$pp_bmi <- ifelse(df_mr$bmi_preprg_mr==9999,NA,df_mr$bmi_preprg_mr)
-# only keep age for now
-df_mr <- df_mr %>% select(ppt_id, mat_age, preeclampsia, hypertension, pp_bmi)
+
+# ever miscarried 
+df_mr$ever_miscarriage <- ifelse(df_mr$miscarriage_n_mr>0 & df_mr$miscarriage_n_mr<9999 & !is.na(df_mr$miscarriage_n_mr),1, 
+                                 ifelse(df_mr$miscarriage_n_mr==0 | is.na(df_mr$miscarriage_n_mr), 0, NA ))
+
+# recurrent miscarried 
+df_mr$recur_miscarriage <- ifelse(df_mr$miscarriage_n_mr>2 & df_mr$miscarriage_n_mr<9999 & !is.na(df_mr$miscarriage_n_mr),1, 
+                                 ifelse(df_mr$miscarriage_n_mr<=2 | is.na(df_mr$miscarriage_n_mr), 0, NA ))
+
+# preeclampsia or gestational hypertension noted in notes of pregnancy complications 
+
+df_mr$preeclampsia <- ifelse(grepl("preeclampsia",df_mr$pn_cmp_sp_mr, ignore.case = T) & !grepl("hx of preeclampsia", df_mr$pn_cmp_sp_mr, ignore.case = T),1, 
+                             ifelse(grepl("gestational hypertension", df_mr$pn_cmp_sp_mr, ignore.case = T)  & !grepl("hx of gestational hypertension", df_mr$pn_cmp_sp_mr, ignore.case = T), 1,
+                                    ifelse(grepl("gestational htn", df_mr$pn_cmp_sp_mr, ignore.case = T)  & !grepl("hx of gestational htn", df_mr$pn_cmp_sp_mr, ignore.case = T), 1,
+                                          ifelse(grepl("gest htn", df_mr$pn_cmp_sp_mr, ignore.case = T)  & !grepl("hx gest htn", df_mr$pn_cmp_sp_mr, ignore.case = T), 1,
+                                             ifelse(grepl("Preclampsia", df_mr$pn_cmp_sp_mr, ignore.case = T) & !grepl("hx of preclampsia", df_mr$pn_cmp_sp_mr, ignore.case = T), 1, 0)))))
+                                                 
+df_mr$hypertension <-   ifelse(grepl("hypertension", df_mr$pn_cmp_sp_mr, ignore.case=T) & !grepl("gestational hypertension", df_mr$pn_cmp_sp_mr, ignore.case = T) & !grepl("gest hypertension", df_mr$pn_cmp_sp_mr, ignore.case=T) & !grepl("hx of hypertension", df_mr$pn_cmp_sp_mr, ignore.case=T), 1,
+                               ifelse(grepl("elevated bp", df_mr$pn_cmp_sp_mr, ignore.case=T) & !grepl("hx of elevated bp", df_mr$pn_cmp_sp_mr, ignore.case = T), 1,  
+                               ifelse(grepl("high blood pressure", df_mr$pn_cmp_sp_mr, ignore.case = T) & !grepl("hx of high blood pressure", df_mr$pn_cmp_sp_mr, ignore.case = T), 1, 
+                                      ifelse(grepl("elevated blood pressure", df_mr$pn_cmp_sp_mr, ignore.case=T) & !grepl("hx of elevated blood pressure", df_mr$pn_cmp_sp_mr, ignore.case = T), 1, 0))))
+
+
+df_mr$infection <- ifelse(grepl("infection", df_mr$pn_cmp_sp_mr, ignore.case = T),1, 
+                          ifelse(grepl("GBS", df_mr$pn_cmp_sp_mr, ignore.case = T),1, 
+                                 ifelse(grepl("chlamydia", df_mr$pn_cmp_sp_mr, ignore.case = T),1,  
+                                        ifelse(grepl("UTI", df_mr$pn_cmp_sp_mr, ignore.case = T),1, 
+                                               ifelse(grepl("bacterial vaginosis", df_mr$pn_cmp_sp_mr, ignore.case = T),1, 
+                                                      ifelse(grepl("genital warts", df_mr$pn_cmp_sp_mr, ignore.case = T),1,
+                                                             ifelse(grepl("chorioamnionitis", df_mr$pn_cmp_sp_mr, ignore.case = T),1,
+                                                                    ifelse(grepl("strep throat", df_mr$pn_cmp_sp_mr, ignore.case = T),1,
+                                                                           ifelse(grepl("amoxicillin", df_mr$pn_cmp_sp_mr, ignore.case = T),1,
+                                                                                  ifelse(grepl("hand, foot, mouth disease", df_mr$pn_cmp_sp_mr, ignore.case = T),1,
+                                                                                         ifelse(grepl("Trichomonas", df_mr$pn_cmp_sp_mr, ignore.case = T) | grepl("trichomoniasis", df_mr$pn_cmp_sp_mr, ignore.case = T)   ,1,0)))))))))))
+
+
+df_mr$anemia_preg <- ifelse(grepl("anemia", df_mr$pn_cmp_sp_mr, ignore.case = T), 1, 0)
+
+df_mr$alcohol_use_preg <- ifelse(grepl("ETOH", df_mr$sub_use_sp_mr, ignore.case = T), 1, 
+                                 ifelse(grepl("margarita", df_mr$sub_use_sp_mr, ignore.case = T), 1, 
+                                        ifelse(grepl("drink", df_mr$sub_use_sp_mr, ignore.case = T), 1, 0)))
+
+df_mr$marijuana_use_preg <- ifelse(grepl("marijuana", df_mr$sub_use_sp_mr, ignore.case=T), 1, 
+                                   ifelse(grepl("marihuana", df_mr$sub_use_sp_mr, ignore.case = T), 1, 0))
 
 # fetal growth created variables 
 # this data set came from Stephanie, to be consistent with how fetal growth measures have previously been defined 
-df_f <- read.csv("/Users/danagoin/Documents/Research projects/CiOB-ECHO/CiOB2 data/fetal growth.csv")
+df_f <- read.csv("/Users/danagoin/Documents/Research projects/CiOB-ECHO/Data/CiOB2 data/fetal growth.csv")
 
 df_f <- df_f %>% select(ID, ga_weeks_comb, SGA_10, baby_wt_grams, lbw_cat, ga_cat.4)
 df_f$ppt_id <- df_f$ID
+
+df <- left_join(df, df_f)
+df <- left_join(df, df_b)
+df <- left_join(df, df_mr)
+
+# create gestational age at time of second trimester visit 
+
+df$gestwks_secondtri <- round(difftime(strptime(df$secondtri_date, format="%Y-%m-%d"), strptime(df$lmp_dt_mr, format="%Y-%m-%d"), units = "weeks"),0)
+# ask if it's possible that people were seen before 12 or after 28 weeks for their second trimester visit 
+df$gestwks_secondtri <- ifelse(df$gestwks_secondtri<12 | df$gestwks_secondtri>28, NA, df$gestwks_secondtri)
+df$gestwks_secondtri <- ifelse(is.na(df$gestwks_secondtri), round(df$ga_weeks_comb - floor(difftime(strptime(df$dob_c_mr, format="%Y-%m-%d"), strptime(df$secondtri_date, format="%Y-%m-%d"), units = "weeks")), 0), df$gestwks_secondtri)
+
+summary(df$gestwks_secondtri)
+View(df %>% select(ppt_id, lmp_dt_mr, secondtri_date, dob_c_mr, gestwks_secondtri))
 
 # recode key variables  
                    
@@ -105,10 +168,10 @@ df$hh_income_cat <- ifelse(df$hh_income_cat1==1,1,
 df$hh_income_cat <- factor(df$hh_income_cat, levels=c(1,2,3), labels=c("<40,000","$40,000-$79,999","$80,000+"))
 # merge on biological measures of stress 
 
-df_crh1 <- read_xlsx("/Users/danagoin/Documents/Research projects/CiOB-ECHO/Stress biomarkers data/CRH results/Fisher Lab/CORRECTEDCiOB2CRHCompiledData8.2.18.xlsx", sheet="ALL VALUES", range="B4:C435")
+df_crh1 <- read_xlsx("/Users/danagoin/Documents/Research projects/CiOB-ECHO/Data/Stress biomarkers data/CRH results/Fisher Lab/CORRECTEDCiOB2CRHCompiledData8.2.18.xlsx", sheet="ALL VALUES", range="B4:C435")
 names(df_crh1) <- c("ppt_id","CRH_pg_ml")
 # add second batch 
-df_crh2 <- read_xlsx("/Users/danagoin/Documents/Research projects/CiOB-ECHO/Stress biomarkers data/CRH results/Fisher Lab/LastBatchCRH ELISAWFBC10.30.18.xlsx", range="O3:P69")
+df_crh2 <- read_xlsx("/Users/danagoin/Documents/Research projects/CiOB-ECHO/Data/Stress biomarkers data/CRH results/Fisher Lab/LastBatchCRH ELISAWFBC10.30.18.xlsx", range="O3:P69")
 names(df_crh2) <- c("ppt_id","CRH_pg_ml")
 
 # combine
@@ -141,6 +204,10 @@ dim(df_m)
 
 df_m$log_CRH <- log(df_m$CRH_pg_ml)
 
+
+# create variable for number of weeks gestation at second trimester sample date 
+
+
 # log-CRH is approximately normally distributed
 pdf(file="/Users/danagoin/Documents/Research projects/CiOB-ECHO/Fetal growth and pregnancy complications/results/qqplot_log_CRH.pdf")
 qqnorm(df_m$log_CRH)
@@ -148,9 +215,11 @@ qqline(df_m$log_CRH)
 dev.off()
 
 # merge on medical record data 
-df_m <- left_join(df_m, df_mr)
-df_m <- left_join(df_m, df_f)
+#df_m <- left_join(df_m, df_mr)
+#df_m <- left_join(df_m, df_f)
 
+df_m$ptb <- ifelse(df_m$ga_cat.4=="Preterm",1,ifelse(df_m$ga_cat.4=="Full Term",0,NA))
+df_m$sga <- ifelse(df_m$SGA_10=="1: Small for GA",1, ifelse(df_m$SGA_10=="0: Normal for GA",0,NA))
 # look at distribtuion of CRH by potential confounders 
 
 
@@ -292,6 +361,12 @@ ggsave(p11, file="/Users/danagoin/Documents/Research projects/CiOB-ECHO/Fetal gr
 ggplot(data=df_m, aes(x=log_CRH, y=ga_weeks_comb)) + geom_point() + 
   geom_smooth(method="loess", linetype=2, color="black") + theme_bw() + 
   labs(x="log CRH", y="Gestational age (weeks)") + theme(axis.text=element_text(size=15), axis.title=element_text(size=15, face="bold"))
+
+# gestational age at measurement in weeks 
+ggplot(data=df_m, aes(x=gestwks_secondtri, y=CRH_pg_ml)) + geom_point() + 
+  geom_smooth(method="loess", linetype=2, color="black") + theme_bw() + 
+  labs(y="CRH", x="Gestational age at measurement (weeks)") + theme(axis.text=element_text(size=15), axis.title=element_text(size=15, face="bold"))
+
 
 library(xtable)
 table <- read_xlsx("/Users/danagoin/Documents/Research projects/CiOB-ECHO/Fetal growth and pregnancy complications/results/preliminary results 8-6-2019.xlsx", range="A3:D10")
