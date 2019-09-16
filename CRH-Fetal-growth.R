@@ -20,9 +20,6 @@ df_b <- df_b %>% select(ppt_id, secondtri_date)
 df_mr <- read.csv("/Users/danagoin/Documents/Research projects/CiOB-ECHO/Data/CiOB2 data/medicalrecordabstraction.csv")
 
 
-# recode variables you need 
-df_mr$mat_age <- ifelse(df_mr$age_dlvry_mr==9999, NA, df_mr$age_dlvry_mr)
-
 # note: hx means history, fhx means family history 
 df_mr$preeclampsia <- ifelse(df_mr$preclmps_hx_ns_mr==9,NA,df_mr$preclmps_hx_ns_mr)
 df_mr$hypertension <- ifelse(df_mr$htn_hx_mr==9, NA, df_mr$htn_hx_mr)
@@ -121,7 +118,35 @@ df$marital <- factor(df$marital, levels=c(1,3,5), labels=c("Married","Widowed, s
 
 df$medi_cal <- ifelse(df$medi_cal_m>=97,NA, df$medi_cal_m)
 
+df$parity <- ifelse(df$parity_mr==9, NA, ifelse(df$parity_mr>3, 3, df$parity_mr))
+df$parity <- factor(df$parity, levels=c(0,1,2,3), labels=c("0","1","2","3+"))
 
+df$num_child_at_home <- ifelse(df$child_n==0 & !is.na(df$child_n), 0, 
+                               ifelse(df$child_live_n>3 & !is.na(df$child_live_n), 3, df$child_live_n))
+
+# if missing child_live_n but not missing child_n, replace with value from child_n 
+df$num_child_at_home <- ifelse(is.na(df$num_child_at_home) & !is.na(df$child_n) & df$child_n>3 & df$child_n<95, 3, 
+                               ifelse(is.na(df$num_child_at_home) & df$child_n==99, NA, 
+                               ifelse(is.na(df$num_child_at_home) & !is.na(df$child_n), df$child_n, df$num_child_at_home)))
+
+df$num_child_at_home <- factor(df$num_child_at_home, levels=c(0,1,2,3), labels=c("0","1","2","3+"))
+
+# infant sex: 0 = female, 1 = male 
+df$infant_sex <- ifelse(df$sex_c_mr==1, 1, 
+                        ifelse(df$sex_c_mr==0, 0, NA))
+df$infant_sex <- factor(df$infant_sex, levels=c(0,1), labels = c("Female","Male"))
+
+# recode variables you need 
+# age at delivery from medical record
+df$mat_age <- ifelse(df$age_dlvry_mr==9999, NA, df$age_dlvry_mr)
+# if missing, use mother's date of birth and date of child's birth from the medical record and round to nearest year 
+df$mat_age <- ifelse(is.na(df$mat_age), 
+                        round(difftime(strptime(df$dob_c_mr, format="%Y-%m-%d"), strptime(df$dob_m_mr, format="%Y-%m-%d"), units = "days")/365.25,0), df$mat_age)
+# if still missing, use mother's date of birth and date of second trimester visit and round to nearest year 
+df$mat_age <- ifelse(is.na(df$mat_age), 
+                        round(difftime(strptime(df$secondtri_date, format="%Y-%m-%d"), strptime(df$dob_m_mr, format="%Y-%m-%d"), units = "days")/365.25,0), df$mat_age)
+# should have no missing after this 
+sum(is.na(df$mat_age))
 
 # create income categories 
 
@@ -204,8 +229,10 @@ dim(df_m)
 
 df_m$log_CRH <- log(df_m$CRH_pg_ml)
 
+df_m$ptb <- ifelse(df_m$ga_cat.4=="Preterm",1,ifelse(df_m$ga_cat.4=="Full Term",0,NA))
+df_m$sga <- ifelse(df_m$SGA_10=="1: Small for GA",1, ifelse(df_m$SGA_10=="0: Normal for GA",0,NA))
 
-# create variable for number of weeks gestation at second trimester sample date 
+save(df_m, file="/Users/danagoin/Documents/Research projects/CiOB-ECHO/Projects/CRH and fetal growth/data/CRH_fetal_growth_data")
 
 
 # log-CRH is approximately normally distributed
@@ -213,15 +240,6 @@ pdf(file="/Users/danagoin/Documents/Research projects/CiOB-ECHO/Fetal growth and
 qqnorm(df_m$log_CRH)
 qqline(df_m$log_CRH)
 dev.off()
-
-# merge on medical record data 
-#df_m <- left_join(df_m, df_mr)
-#df_m <- left_join(df_m, df_f)
-
-df_m$ptb <- ifelse(df_m$ga_cat.4=="Preterm",1,ifelse(df_m$ga_cat.4=="Full Term",0,NA))
-df_m$sga <- ifelse(df_m$SGA_10=="1: Small for GA",1, ifelse(df_m$SGA_10=="0: Normal for GA",0,NA))
-# look at distribtuion of CRH by potential confounders 
-
 
 
 # distribution of CRH
