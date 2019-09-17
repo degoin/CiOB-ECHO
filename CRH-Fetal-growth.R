@@ -23,7 +23,6 @@ df_mr <- read.csv("/Users/danagoin/Documents/Research projects/CiOB-ECHO/Data/Ci
 # note: hx means history, fhx means family history 
 df_mr$preeclampsia <- ifelse(df_mr$preclmps_hx_ns_mr==9,NA,df_mr$preclmps_hx_ns_mr)
 df_mr$hypertension <- ifelse(df_mr$htn_hx_mr==9, NA, df_mr$htn_hx_mr)
-df_mr$pp_bmi <- ifelse(df_mr$bmi_preprg_mr==9999,NA,df_mr$bmi_preprg_mr)
 
 # ever miscarried 
 df_mr$ever_miscarriage <- ifelse(df_mr$miscarriage_n_mr>0 & df_mr$miscarriage_n_mr<9999 & !is.na(df_mr$miscarriage_n_mr),1, 
@@ -236,40 +235,39 @@ df_m$sga <- ifelse(df_m$SGA_10=="1: Small for GA",1, ifelse(df_m$SGA_10=="0: Nor
 
 # bmi 
 # weight
-df_m$pp_weight_lbs <- ifelse(df_m$wt_preprg_mr == 9999, NA, df_m$wt_preprg_mr)
+df_m$pp_weight_lbs <- ifelse(df_m$wt_preprg_mr == 9999, NA, 
+                             ifelse(df_m$wt_preprg_mr<80, NA, df_m$wt_preprg_mr))
+# what are weights that are infeasible? less than 80 lbs? 
+
 
 # height 
 # recode 9999 to 0 for feet, because this corresponds usually to height being recorded in inches only
 df_m$height_ft_mr <- ifelse(df_m$height_ft_mr==9999, 0, df_m$height_ft_mr)
+
+# recode 9999 to NA for inches, because this corresponds to missing both feet and inches
+df_m$height_in_mr <- ifelse(df_m$height_in_mr==9999, NA, df_m$height_in_mr)
 
 # change height_mr to character to enable regular expressions / string operations 
 df_m$height_mr <- as.character(df_m$height_mr)
 
 # if the values for height in inches and feet are missing, replace with values from height_mr 
 df_m$height_ft_mr <- ifelse(is.na(df_m$height_ft_mr) & str_detect(df_m$height_mr,"([0-9]')"), str_extract(str_extract(df_m$height_mr, "([0-9]')"), "([0-9])"), 
-                            ifelse(is.na(df_m$height_ft_mr) & str_detect(df_m$height_mr, "([0-9] ft)"), str_extract(str_extract(df_mr$height_mr,"([0-9] ft.)"), "([0-9])"), df_m$height_ft_mr))
+                            ifelse(is.na(df_m$height_ft_mr) & str_detect(df_m$height_mr, "([0-9] ft)"), str_extract(str_extract(df_m$height_mr,"([0-9] ft.)"), "([0-9])"), df_m$height_ft_mr))
 
 df_m$height_in_mr <- ifelse(is.na(df_m$height_in_mr) & str_detect(df_m$height_mr,"([0-9]\")"), str_extract(str_extract(df_m$height_mr, "([0-9]\")"), "([0-9])"), 
                             ifelse(is.na(df_m$height_in_mr) & str_detect(df_m$height_mr,"([0-9][0-9]\")"), str_extract(str_extract(df_m$height_mr, "([0-9][0-9]\")"), "([0-9][0-9])"), 
                                    ifelse(is.na(df_m$height_in_mr) & str_detect(df_m$height_mr,"([0-9]'')"), str_extract(str_extract(df_m$height_mr, "([0-9]'')"), "([0-9])"), 
                                           ifelse(is.na(df_m$height_in_mr) & str_detect(df_m$height_mr,"([0-9][0-9]'')"), str_extract(str_extract(df_m$height_mr, "([0-9][0-9]'')"), "([0-9][0-9])"), 
-                                                 ifelse(is.na(df_m$height_in_mr) & str_detect(df_m$height_mr, "([0-9] in)"), str_extract(str_extract(df_mr$height_mr,"([0-9] in)"), "([0-9])"), 
-                                                        ifelse(is.na(df_m$height_in_mr) & str_detect(df_m$height_mr, "([0-9][0-9] in)"), str_extract(str_extract(df_mr$height_mr,"([0-9][0-9] in)"), "([0-9][0-9])"), df_m$height_ft_mr))))))
+                                                 ifelse(is.na(df_m$height_in_mr) & str_detect(df_m$height_mr, "([0-9] in)"), str_extract(str_extract(df_m$height_mr,"([0-9] in)"), "([0-9])"), 
+                                                        ifelse(is.na(df_m$height_in_mr) & str_detect(df_m$height_mr, "([0-9][0-9] in)"), str_extract(str_extract(df_m$height_mr,"([0-9][0-9] in)"), "([0-9][0-9])"), df_m$height_in_mr))))))
                                    
-                                                 
-                                                 
-                                                 
-                                   
-                              
-                              df_m$height_in_mr)
-
-# recode 9999 to NA for inches, because this corresponds to missing both feet and inches
-df_m$height_in_mr <- ifelse(df_m$height_in_mr==9999, NA, df_m$height_in_mr)
-
-"\""
+                                                
 # check in with whether the maps have been updated for the geocoding 
 
 # calculate height in inches 
+df_m$height_ft_mr <- as.numeric(df_m$height_ft_mr)
+df_m$height_in_mr <- as.numeric(df_m$height_in_mr)
+
 df_m <- df_m %>% mutate(pp_height_in = height_ft_mr*12 + height_in_mr)
 
 df_m$height_num <- ifelse(df_m$height_mr=="9999",NA,as.numeric(df_m$height_mr))
@@ -282,13 +280,17 @@ df_m$height_mr_cm <- as.numeric(df_m$height_mr_cm)
 # height less than 120 cm is implausible, recode to missing
 df_m$height_mr_cm <- ifelse(df_m$height_mr_cm<120, NA, df_m$height_mr_cm)  
   
+
 df_m$pp_height_in <- ifelse(is.na(df_m$pp_height_in), df_m$height_mr_cm/2.54, df_m$pp_height_in)
 
-# replace missing from other height mr 
-df_m$pp_height_in <- ifelse(is.na(df_m$pp_height_in) & grepl("in", df_m$height_mr, ignore.case = T), as.numeric(str_replace(df_m$height_mr,"in","")), df_m$pp_height_in)
+# recode prepregnancy BMI if missing from height and weight calculated variables 
+df_m$pp_bmi <- ifelse(df_m$bmi_preprg_mr==9999,NA,df_m$bmi_preprg_mr)
+df_m$pp_bmi <- ifelse(is.na(df_m$pp_bmi), 703*df_m$pp_weight_lbs/(df_m$pp_height_in^2), df_m$pp_bmi)
 
 
-View(df_m %>% select(pp_height_in, height_ft_mr, height_in_mr, height_mr, height_mt_mr, height_num, height_mr_cm))
+
+#df_m %>% filter(is.na(pp_height_in)) %>% select(pp_height_in, height_ft_mr, height_in_mr, height_mr, height_num, height_mr_cm) 
+#View(df_m %>% select(pp_height_in, height_ft_mr, height_in_mr, height_mr, height_mt_mr, height_num, height_mr_cm))
 
 save(df_m, file="/Users/danagoin/Documents/Research projects/CiOB-ECHO/Projects/CRH and fetal growth/data/CRH_fetal_growth_data")
 
