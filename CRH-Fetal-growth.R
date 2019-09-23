@@ -3,6 +3,7 @@ rm(list=ls())
 library(dplyr)
 library(readxl)
 library(ggplot2)
+library(stringr)
 
 
 # read in CiOB survey data
